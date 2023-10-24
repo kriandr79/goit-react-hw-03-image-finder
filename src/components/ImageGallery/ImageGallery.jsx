@@ -1,15 +1,18 @@
 import { Component } from 'react';
-import axios from 'axios';
 import css from './ImageGallery.module.css';
 import ImagesGalleryItem from 'components/ImageGalleryItem/ImageGalleryItem';
 import Button from 'components/Button/Button';
-
-const API_KEY = '38931219-81f95ff04be64d9b8b5d6502d';
+import getImages from 'services/getImages';
+import Loader from 'components/Loader/Loader';
+import {scrollDown} from 'utils/scrolldown';
 
 export default class ImageGallery extends Component {
   state = {
     images: '',
     page: 1,
+    isLoading: false,
+    error: '',
+    // status: 'idle',
   };
   componentDidUpdate(prevProps, prevState) {
     const lastSearchWord = prevProps.searchWord;
@@ -17,34 +20,69 @@ export default class ImageGallery extends Component {
     const lastPage = prevState.page;
     const nextPage = this.state.page;
 
+    // Коли вводиться інше пошукове слово - обнуляем стейт
+    if (lastSearchWord !== nextSearchWord) {
+      this.setState({ images: '', page: 1 });
+    }
+
+    // коли змінюється сторінка
     if (lastSearchWord !== nextSearchWord || lastPage !== nextPage) {
-      axios
-        .get(
-          `https://pixabay.com/api/?q=${nextSearchWord}&page=${nextPage}&key=${API_KEY}&image_type=photo&orientation=horizontal&per_page=12`
-        )
-        .then(({ data: { hits } }) => {
-          this.setState(({ images }) => ({
-            images: [...images, ...hits],
-          }));
+
+      this.setState({ isLoading: true });
+
+      getImages(nextSearchWord, nextPage)
+        .then(({ data, status, statusText }) => {
+          if (status === 200) {
+            this.setState(({ images }) => ({
+              images: [...images, ...data.hits],
+            }));
+          } else return Promise.reject(statusText);
         })
-        .catch(function (error) {
-          console.log(error);
+        .catch(error => {
+          this.setState({ error });
         })
-        .finally(function () {
-          // always executed
+        .finally(() => {
+          this.setState({ isLoading: false });
         });
     }
   }
 
-  handleLoadBoreBtn = () => {
+  handleLoadMoreBtn = () => {
     this.setState({ page: this.state.page + 1 });
+    scrollDown();
   };
 
   render() {
-    const { images } = this.state;
+    const { images, isLoading, error } = this.state;
+
+    // if (status === 'resolved') {
+    //   return (
+    //     <div>
+    //       <ul className={css.ImageGallery}>
+    //         {images.map(({ id, webformatURL, largeImageURL }) => (
+    //           <ImagesGalleryItem
+    //             key={id}
+    //             webformatURL={webformatURL}
+    //             largeImageURL={largeImageURL}
+    //           ></ImagesGalleryItem>
+    //         ))}
+    //       </ul>
+    //       <Button onClick={this.handleLoadMoreBtn}></Button>
+    //     </div>
+    //   );
+    // }
+    // else if (status === 'pending') {
+    //   return <div>Loading...</div>;
+    // }
+    // else if (status === 'rejected') {
+    //   return <div>Error</div>;
+    // }
+
     return (
       <>
-        {images && (
+        {error && <div>{error}</div>}
+        {isLoading && <Loader></Loader>}
+        {images.length>0 && (
           <div>
             <ul className={css.ImageGallery}>
               {images.map(({ id, webformatURL, largeImageURL }) => (
@@ -55,7 +93,7 @@ export default class ImageGallery extends Component {
                 ></ImagesGalleryItem>
               ))}
             </ul>
-            <Button onClick={this.handleLoadBoreBtn}></Button>
+            <Button onClick={this.handleLoadMoreBtn}></Button>
           </div>
         )}
       </>
