@@ -4,7 +4,8 @@ import ImagesGalleryItem from 'components/ImageGalleryItem/ImageGalleryItem';
 import Button from 'components/Button/Button';
 import getImages from 'services/getImages';
 import Loader from 'components/Loader/Loader';
-import {scrollDown} from 'utils/scrolldown';
+import { scrollDown } from 'utils/scrolldown';
+import Modal from 'components/Modal/Modal';
 
 export default class ImageGallery extends Component {
   state = {
@@ -12,6 +13,8 @@ export default class ImageGallery extends Component {
     page: 1,
     isLoading: false,
     error: '',
+    showModal: false,
+    largeImageURL: '',
     // status: 'idle',
   };
   componentDidUpdate(prevProps, prevState) {
@@ -27,7 +30,6 @@ export default class ImageGallery extends Component {
 
     // коли змінюється сторінка
     if (lastSearchWord !== nextSearchWord || lastPage !== nextPage) {
-
       this.setState({ isLoading: true });
 
       getImages(nextSearchWord, nextPage)
@@ -52,8 +54,16 @@ export default class ImageGallery extends Component {
     scrollDown();
   };
 
+  showModal = imageURL => {
+    console.log(imageURL);
+    this.setState({ showModal: true, largeImageURL: imageURL });
+  };
+  closeModal = () => {
+    this.setState({ showModal: false, largeImageURL: '' });
+  };
+
   render() {
-    const { images, isLoading, error } = this.state;
+    const { images, isLoading, error, showModal, largeImageURL } = this.state;
 
     // if (status === 'resolved') {
     //   return (
@@ -80,9 +90,15 @@ export default class ImageGallery extends Component {
 
     return (
       <>
+        {showModal && (
+          <Modal
+            largeImageURL={largeImageURL}
+            onClose={this.closeModal}
+          ></Modal>
+        )}
         {error && <div>{error}</div>}
         {isLoading && <Loader></Loader>}
-        {images.length>0 && (
+        {images.length > 0 && (
           <div>
             <ul className={css.ImageGallery}>
               {images.map(({ id, webformatURL, largeImageURL }) => (
@@ -90,9 +106,11 @@ export default class ImageGallery extends Component {
                   key={id}
                   webformatURL={webformatURL}
                   largeImageURL={largeImageURL}
+                  onClick={this.showModal}
                 ></ImagesGalleryItem>
               ))}
             </ul>
+
             <Button onClick={this.handleLoadMoreBtn}></Button>
           </div>
         )}
